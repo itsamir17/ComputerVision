@@ -1,0 +1,63 @@
+import cv2
+import json
+import numpy as np
+
+points = []
+parking_slots = []
+
+image_path = "Capture1.png"
+image = cv2.imread(image_path)
+if image is None:
+    print("Erreur : image non trouvée")
+    exit()
+clone = image.copy()
+
+def click_event(event, x, y, flags, param):
+    global points, parking_slots
+    if event == cv2.EVENT_LBUTTONDOWN:
+        points.append((x, y))
+        cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
+        cv2.putText(image, str(len(points)), (x+5, y-5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+        if len(points) == 4:
+            pts = points.copy()
+            cv2.polylines(image, [np.array(pts)], isClosed=True, color=(0, 255, 0), thickness=2)
+            parking_slots.append([list(pt) for pt in pts])
+            points = []
+
+            # 🔹 Afficher la liste des slots actuelle
+            print("📌 Slots actuels :")
+            for i, slot in enumerate(parking_slots):
+                print(f"Slot {i+1}: {slot}")
+
+cv2.namedWindow("Parking Selector")
+cv2.setMouseCallback("Parking Selector", click_event)
+
+while True:
+    cv2.imshow("Parking Selector", image)
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord('r'):
+        image = clone.copy()
+        parking_slots = []
+        points = []
+        print("🔁 Réinitialisé.")
+    elif key == ord('u'):
+        if parking_slots:
+            parking_slots.pop()
+            image = clone.copy()
+            for slot in parking_slots:
+                cv2.polylines(image, [np.array(slot)], True, (0, 255, 0), 2)
+            print("↩️ Dernière place supprimée.")
+            print("📌 Slots actuels :")
+            for i, slot in enumerate(parking_slots):
+                print(f"Slot {i+1}: {slot}")
+    elif key == ord('s'):
+        with open("parking_slots.json", "w") as f:
+            json.dump(parking_slots, f)
+        print("✅ Coordonnées sauvegardées dans parking_slots.json")
+        break
+    elif key == ord('q'):
+        print("❌ Fermeture sans sauvegarde.")
+        break
+
+cv2.destroyAllWindows()
